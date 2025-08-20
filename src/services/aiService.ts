@@ -34,18 +34,30 @@ class OCRService {
 
 // Gemini AI Service using Supabase Edge Function
 class GeminiService {
-  async generateTest(extractedText: string): Promise<string> {
+  async generateTest(extractedTexts: string | string[]): Promise<string> {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       
-      console.log('🧾 OCR dan olingan matn:', extractedText);
-      console.log('📏 Matn uzunligi:', extractedText.length, 'belgi');
-      const promptText = `Testni xatolarsiz ishlab ber: ${extractedText}`;
-      console.log('🤖 Gemini ga yuboriladigan prompt:', promptText);
+      // Handle both single string and array of strings
+      const textsArray = Array.isArray(extractedTexts) ? extractedTexts : [extractedTexts];
+      
+      // Filter valid texts and combine them
+      const validTexts = textsArray.filter(text => text && text.trim().length > 5);
+      
+      if (validTexts.length === 0) {
+        throw new Error('Rasmlardan yetarli matn ajratolmadi');
+      }
+
+      const combinedText = validTexts.join('\n\n--- Keyingi rasm ---\n\n');
+      
+      console.log('🧾 OCR dan olingan matn(lar):', validTexts.length, 'ta');
+      console.log('📏 Umumiy matn uzunligi:', combinedText.length, 'belgi');
+      const promptText = `Testni xatolarsiz ishlab ber: ${combinedText}`;
+      console.log('🤖 Gemini ga yuboriladigan prompt:', promptText.substring(0, 200) + '...');
       console.log('📤 Prompt uzunligi:', promptText.length, 'belgi');
       
       const { data, error } = await supabase.functions.invoke('gemini-generate', {
-        body: { extractedText }
+        body: { extractedText: combinedText }
       });
 
       if (error) {
@@ -58,15 +70,17 @@ class GeminiService {
         throw new Error(data.error);
       }
 
-      if (!data?.generatedTest) {
+      // Handle both old and new response formats
+      const result = data?.generatedTest || data?.text;
+      if (!result) {
         console.error('❌ Test yaratilmadi - bo\'sh javob');
         throw new Error('Test yaratilmadi');
       }
 
-      console.log('✅ Gemini dan kelgan javob:', data.generatedTest);
-      console.log('📊 Javob uzunligi:', data.generatedTest.length, 'belgi');
+      console.log('✅ Gemini dan kelgan javob:', result.substring(0, 200) + '...');
+      console.log('📊 Javob uzunligi:', result.length, 'belgi');
       
-      return data.generatedTest;
+      return result;
     } catch (error) {
       console.error('❌ Gemini service xatosi:', error);
       throw new Error(error instanceof Error ? error.message : 'Test yaratishda xatolik yuz berdi');
