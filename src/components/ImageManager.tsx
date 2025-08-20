@@ -10,25 +10,30 @@ interface ImageManagerProps {
   maxImages?: number;
 }
 
-export const ImageManager = ({ onImagesChange, disabled, maxImages = 3 }: ImageManagerProps) => {
+export const ImageManager = ({
+  onImagesChange,
+  disabled,
+  maxImages = 3,
+}: ImageManagerProps) => {
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  // Fayl tanlash
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
-    
     if (images.length + files.length > maxImages) {
       toast.error(`Maksimal ${maxImages} ta rasm yuklash mumkin`);
       return;
     }
 
-    const validFiles = files.filter(file => {
-      if (!file.type.startsWith('image/')) {
+    const validFiles = files.filter((file) => {
+      if (!file.type.startsWith("image/")) {
         toast.error(`${file.name} fayli rasm emas`);
         return false;
       }
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      if (file.size > 10 * 1024 * 1024) {
         toast.error(`${file.name} fayli juda katta (max 10MB)`);
         return false;
       }
@@ -40,11 +45,10 @@ export const ImageManager = ({ onImagesChange, disabled, maxImages = 3 }: ImageM
       setImages(newImages);
       onImagesChange(newImages);
 
-      // Create previews
-      validFiles.forEach(file => {
+      validFiles.forEach((file) => {
         const reader = new FileReader();
         reader.onload = (e) => {
-          setImagePreviews(prev => [...prev, e.target?.result as string]);
+          setImagePreviews((prev) => [...prev, e.target?.result as string]);
         };
         reader.readAsDataURL(file);
       });
@@ -52,181 +56,129 @@ export const ImageManager = ({ onImagesChange, disabled, maxImages = 3 }: ImageM
       toast.success(`${validFiles.length} ta rasm yuklandi`);
     }
 
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    event.target.value = ""; // reset
   };
 
-  const handleCameraCapture = async () => {
-    if (images.length >= maxImages) {
-      toast.error(`Maksimal ${maxImages} ta rasm yuklash mumkin`);
-      return;
-    }
+  // Kamera orqali olish
+  const handleCameraCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length > 0) {
+      const newImages = [...images, ...files].slice(0, maxImages);
+      setImages(newImages);
+      onImagesChange(newImages);
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'environment'
-        }
-      });
-
-      // Create a temporary video element
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      video.setAttribute('playsinline', 'true');
-      video.muted = true;
-      
-      await new Promise<void>((resolve) => {
-        video.onloadedmetadata = () => {
-          video.play().then(() => resolve());
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setImagePreviews((prev) => [...prev, e.target?.result as string]);
         };
+        reader.readAsDataURL(file);
       });
 
-      // Create canvas for capture
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext('2d');
-      
-      if (!context) {
-        throw new Error('Canvas context not available');
-      }
-
-      context.drawImage(video, 0, 0);
-      
-      // Stop camera
-      stream.getTracks().forEach(track => track.stop());
-
-      // Convert to blob and then to file
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
-          const newImages = [...images, file];
-          setImages(newImages);
-          onImagesChange(newImages);
-
-          // Create preview
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setImagePreviews(prev => [...prev, e.target?.result as string]);
-          };
-          reader.readAsDataURL(file);
-
-          toast.success("Rasm muvaffaqiyatli olindi!");
-        }
-      }, 'image/jpeg', 0.9);
-
-    } catch (error) {
-      console.error('Camera error:', error);
-      toast.error("Kamera ishlamadi");
+      toast.success("Rasm muvaffaqiyatli olindi!");
     }
+    event.target.value = ""; // reset
   };
 
   const removeImage = (index: number) => {
     const newImages = images.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
-    
     setImages(newImages);
     setImagePreviews(newPreviews);
     onImagesChange(newImages);
-    
     toast.success("Rasm olib tashlandi");
-  };
-
-  const openFileDialog = () => {
-    fileInputRef.current?.click();
   };
 
   return (
     <div className="w-full space-y-6">
-      {/* Upload Controls */}
-      <div className="space-y-4">
-        <div className="text-center space-y-2">
-          <h3 className="text-lg font-semibold">Test varaq rasmlarini yuklang</h3>
-          <p className="text-sm text-muted-foreground">
-            Maksimal {maxImages} ta rasm yuklash mumkin
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button
-            onClick={openFileDialog}
-            disabled={disabled || images.length >= maxImages}
-            variant="outline"
-            size="lg"
-            className="flex-1 max-w-xs"
-          >
-            <Upload className="w-5 h-5 mr-2" />
-            Rasm yuklash ({images.length}/{maxImages})
-          </Button>
-
-          <Button
-            onClick={handleCameraCapture}
-            disabled={disabled || images.length >= maxImages}
-            variant="outline"
-            size="lg"
-            className="flex-1 max-w-xs"
-          >
-            <Camera className="w-5 h-5 mr-2" />
-            Rasmga olish
-          </Button>
-        </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={handleFileUpload}
-          className="hidden"
-        />
+      {/* Controls */}
+      <div className="text-center space-y-2">
+        <h3 className="text-lg font-semibold">Test varaq rasmlarini yuklang</h3>
+        <p className="text-sm text-muted-foreground">
+          Maksimal {maxImages} ta rasm yuklash mumkin
+        </p>
       </div>
 
-      {/* Image Previews */}
-      {images.length > 0 && (
+      <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        {/* Yuklash tugmasi */}
+        <Button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={disabled || images.length >= maxImages}
+          variant="outline"
+          size="lg"
+          className="flex-1 max-w-xs"
+        >
+          <Upload className="w-5 h-5 mr-2" />
+          Rasm yuklash ({images.length}/{maxImages})
+        </Button>
+
+        {/* Kamera tugmasi */}
+        <Button
+          onClick={() => cameraInputRef.current?.click()}
+          disabled={disabled || images.length >= maxImages}
+          variant="outline"
+          size="lg"
+          className="flex-1 max-w-xs"
+        >
+          <Camera className="w-5 h-5 mr-2" />
+          Rasmga olish
+        </Button>
+      </div>
+
+      {/* Hidden inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFileUpload}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment" // telefon kamerasini ochadi
+        className="hidden"
+        onChange={handleCameraCapture}
+      />
+
+      {/* Previews */}
+      {images.length > 0 ? (
         <div className="space-y-4">
           <h4 className="text-md font-medium">Yuklangan rasmlar:</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {imagePreviews.map((preview, index) => (
-              <Card key={index} className="relative group overflow-hidden">
-                <div className="aspect-square">
-                  <img
-                    src={preview}
-                    alt={`Yuklangan rasm ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+              <Card
+                key={index}
+                className="relative group overflow-hidden rounded-xl shadow-md"
+              >
+                <img
+                  src={preview}
+                  alt={`Rasm ${index + 1}`}
+                  className="w-full h-40 object-cover"
+                />
                 <Button
                   onClick={() => removeImage(index)}
                   variant="destructive"
                   size="icon"
-                  className="absolute top-2 right-2 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-2 right-2 w-8 h-8 opacity-0 group-hover:opacity-100 transition"
                 >
                   <X className="w-4 h-4" />
                 </Button>
-                <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                  {index + 1}/{maxImages}
-                </div>
               </Card>
             ))}
           </div>
         </div>
-      )}
-
-      {/* Empty State */}
-      {images.length === 0 && (
-        <Card className="border-dashed border-2 border-muted-foreground/25 p-8">
-          <div className="text-center space-y-4">
-            <FileImage className="w-12 h-12 text-muted-foreground mx-auto" />
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Hech qanday rasm yuklanmagan</p>
-              <p className="text-xs text-muted-foreground">
-                Yuqoridagi tugmalardan foydalanib rasmlarni yuklang
-              </p>
-            </div>
+      ) : (
+        <Card className="border-dashed border-2 p-8 text-center space-y-4">
+          <FileImage className="w-12 h-12 text-muted-foreground mx-auto" />
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Hech qanday rasm yuklanmagan</p>
+            <p className="text-xs text-muted-foreground">
+              Yuqoridagi tugmalardan foydalanib rasm yuklang yoki kamera orqali
+              oling
+            </p>
           </div>
         </Card>
       )}
