@@ -38,7 +38,6 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(
       setError(null);
       
       try {
-        // Tez kamera sozlamalari bilan
         const mediaStream = await navigator.mediaDevices.getUserMedia({
           video: {
             width: { ideal: 1280 },
@@ -52,22 +51,16 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(
           const video = videoRef.current;
           video.srcObject = mediaStream;
           setStream(mediaStream);
-          
-          // Tezkor video yuklash
           video.setAttribute('playsinline', 'true');
           video.muted = true;
-          
-          // Darhol play qilish
+
           const playPromise = video.play();
-          
           if (playPromise !== undefined) {
             playPromise.then(() => {
-              // Video darhol boshlandi
               setIsActive(true);
               setIsLoading(false);
               toast.success("Kamera yoqildi!");
             }).catch(() => {
-              // Fallback: metadata kutish
               video.onloadedmetadata = () => {
                 video.play().then(() => {
                   setIsActive(true);
@@ -130,7 +123,7 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(
 
     return (
       <div className="w-full h-full relative">
-        <div className="relative w-full h-full overflow-hidden rounded-lg bg-muted">
+        <div className="relative w-full h-[60vh] md:h-[70vh] lg:h-[75vh] overflow-hidden rounded-2xl shadow-md bg-muted">
           {isActive ? (
             <>
               <video
@@ -140,21 +133,30 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(
                 playsInline
                 muted
               />
-              <div className="absolute top-4 left-4 bg-background/80 text-foreground px-3 py-1 rounded-full text-sm">
+              <div className="absolute top-3 left-3 bg-background/80 text-foreground px-3 py-1 rounded-full text-xs sm:text-sm shadow">
                 📹 Kamera aktiv
+              </div>
+              <div className="absolute bottom-4 inset-x-0 flex justify-center">
+                <Button
+                  onClick={captureImage}
+                  size="lg"
+                  className="rounded-full px-6 py-6 text-lg shadow-lg bg-primary hover:bg-primary/90"
+                >
+                  📸 Suratga olish
+                </Button>
               </div>
             </>
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center p-6">
+            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
               {isLoading ? (
                 <div className="flex flex-col items-center space-y-4">
-                  <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full"></div>
-                  <p className="text-muted-foreground">Kamera yoqilmoqda...</p>
+                  <div className="animate-spin w-10 h-10 border-2 border-primary border-t-transparent rounded-full"></div>
+                  <p className="text-muted-foreground text-sm sm:text-base">Kamera yoqilmoqda...</p>
                 </div>
               ) : error ? (
                 <div className="flex flex-col items-center space-y-4 text-center">
                   <AlertCircle className="w-12 h-12 text-destructive" />
-                  <p className="text-destructive">{error}</p>
+                  <p className="text-destructive text-sm sm:text-base">{error}</p>
                   <Button
                     onClick={startCamera}
                     disabled={disabled}
@@ -164,11 +166,11 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-6 text-center">
-                  <Camera className="w-16 h-16 text-muted-foreground mx-auto" />
+                <div className="space-y-6">
+                  <Camera className="w-14 h-14 sm:w-16 sm:h-16 text-muted-foreground mx-auto" />
                   <div className="space-y-2">
                     <h3 className="text-lg font-semibold">Kamerani yoqish</h3>
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground text-sm sm:text-base">
                       Sahifani suratga olish uchun kamerani yoqing
                     </p>
                   </div>
@@ -176,7 +178,7 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(
                     onClick={startCamera}
                     disabled={disabled}
                     size="lg"
-                    className="bg-primary hover:bg-primary/90"
+                    className="bg-primary hover:bg-primary/90 px-6 py-5 text-base sm:text-lg"
                   >
                     📹 Kamerani Yoqish
                   </Button>
