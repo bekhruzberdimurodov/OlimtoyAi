@@ -1,4 +1,4 @@
-import { useRef, forwardRef, useImperativeHandle, useState, useCallback } from "react";
+import { useRef } from "react";
 import { Camera } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,81 +8,47 @@ interface CameraCaptureProps {
   disabled?: boolean;
 }
 
-export interface CameraCaptureRef {
-  captureImage: () => Promise<void>;
-  startCamera: () => Promise<void>;
-  stopCamera: () => void;
-  isActive: boolean;
-}
+export const CameraCapture = ({ onCapture, disabled }: CameraCaptureProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(
-  ({ onCapture, disabled }, ref) => {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [isActive, setIsActive] = useState(false);
+  const handleCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onCapture(file);
+      toast.success("Rasm olindi!");
+    }
+  };
 
-    // Default kamera app ochish
-    const startCamera = useCallback(async () => {
-      fileInputRef.current?.click();
-    }, []);
+  return (
+    <div className="w-full h-full relative">
+      <div className="w-full h-[60vh] md:h-[70vh] lg:h-[75vh] flex flex-col items-center justify-center rounded-2xl shadow-md bg-muted">
+        <Camera className="w-14 h-14 sm:w-16 sm:h-16 text-muted-foreground mb-6" />
+        <h3 className="text-lg font-semibold mb-2">Kameradan foydalanish</h3>
+        <p className="text-muted-foreground text-sm sm:text-base mb-6 text-center">
+          Suratga olish uchun qurilma kamerasi ochiladi
+        </p>
 
-    // Kamera "stop" qilish (bizda real stream yo‘q, shunchaki flag reset)
-    const stopCamera = useCallback(() => {
-      setIsActive(false);
-    }, []);
-
-    // Surat olish (aslida kamera app orqali fayl tanlanadi)
-    const captureImage = useCallback(async () => {
-      fileInputRef.current?.click();
-    }, []);
-
-    // Fayl tanlanganida
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        setIsActive(true);
-        onCapture(file);
-        toast.success("Rasm olindi!");
-      }
-    };
-
-    useImperativeHandle(ref, () => ({
-      captureImage,
-      startCamera,
-      stopCamera,
-      isActive,
-    }), [captureImage, startCamera, stopCamera, isActive]);
-
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-6">
-        {/* Yashirin input */}
+        {/* Yashirin input kamera ochadi */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
           capture="environment"
           className="hidden"
-          onChange={handleFileChange}
+          onChange={handleCapture}
         />
 
-        <Camera className="w-14 h-14 sm:w-16 sm:h-16 text-muted-foreground mx-auto" />
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold">Kamera orqali suratga oling</h3>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            📷 Tugmani bosing va kamera ilovasi ochiladi
-          </p>
-        </div>
-
         <Button
-          onClick={startCamera}
+          onClick={() => fileInputRef.current?.click()}
           disabled={disabled}
           size="lg"
           className="bg-primary hover:bg-primary/90 px-6 py-5 text-base sm:text-lg"
         >
-          📸 Rasmga olish
+          📸 Suratga olish
         </Button>
       </div>
-    );
-  }
-);
+    </div>
+  );
+};
 
 CameraCapture.displayName = "CameraCapture";
